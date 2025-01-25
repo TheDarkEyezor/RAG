@@ -17,7 +17,7 @@ llm_json_mode = ChatOllama(model=local_llm, temperature=0, format="json")
 receptionist_prompt = """
 You are a receptionist at a law firm. A client has approached and the following is the problem they are facing.
 Your job is to redirect them to the right specialised lawyer you who can help them. Return JSON with a single key, lawyer, that is one of the following options that the client is likely to find the best help from
-[criminal, family, wills and estates]
+[criminal, family, wills and estates, contract]
 """
 
 def receptionist_prompt_response(prompt):
@@ -29,18 +29,11 @@ def receptionist_prompt_response(prompt):
   return json.loads(result.content)
 
 
-urls = [
-  # "https://www.gov.uk/guidance/sign-in-to-your-hmrc-business-tax-account",
-  # "https://lilianweng.github.io/posts/2023-06-23-agent/",
-  # "https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/",
-  # "https://lilianweng.github.io/posts/2023-10-25-adv-attack-llm/",
-  "/Users/adiprabs/Coding/RAG/Wills_and_Estates.pdf",
-]
-
 relevant_docs = {
-  "wills and estates" : ["/Users/adiprabs/Coding/RAG/Wills_and_Estates.pdf"],
-  "criminal" : ["/Users/adiprabs/Coding/RAG/Wills and Estates.pdf"],
-  "family" : ["/Users/adiprabs/Coding/RAG/Wills and Estates.pdf"],
+  "wills and estates" : ["./documents/Wills_and_Estates.pdf"],
+  "criminal" : ["./documents/Criminal and Practice.pdf", "./documents/Criminal.pdf"],
+  "family" : ["./documents/Wills_and_Estates.pdf"],
+  "contract" : ["./documents/Contract Law.pdf"],
 }
 
 # Load documents
@@ -73,7 +66,6 @@ def load_docs(category):
   # Create retriever
   return vectorstore.as_retriever(k=3)
 
-# %%
 ### Generate
 
 # Prompt
@@ -110,7 +102,9 @@ messages = ""
 
 information_needed = {
   "wills and estates" : "full names, dates of birth, current marital status, address and contact information, aliases and other names, children (their names and dob), dependents, all assests owned jointly and individually, debts and liabilities associated with assets, any assests aborad, heirlooms, backup executor",
-  "contract" : "full names, dates of birth, current marital status, address and contact information, aliases and other names, children (their names and dob), dependents, all assests owned jointly and individually, debts and liabilities associated with assets, any assests aborad, heirlooms, backup executor",
+  "contract" : "full names, parties involved, date of agreement, location of agreement, terms of agreement, violations of terms(if applicable), any witnesses, any evidence, any prior agreements, any other relevant information",
+  "criminal" : "full names, dates of birth, alleged offense, date of offense, location of offense, arresting officer, any witnesses, any evidence, any prior convictions, any other pending cases, any other relevant information",
+  "family" : "full names, dates of birth, current marital status, address and contact information, aliases and other names, children (their names and dob), dependents, all assests owned jointly and individually, debts and liabilities associated with assets, any assests aborad, heirlooms, backup executor",
 }
 
 # Test
@@ -222,10 +216,4 @@ class Lawyer:
     }
 
 if __name__ == "__main__":
-  summary = input("Tell us what you'd like to file a case for: ")
-  if summary == "exit":
-    exit("exited")
-  lawyer = receptionist_prompt_response(summary)["lawyer"]
-  retriever = load_docs(lawyer)
-  (conversation, context) = lawyer_response(summary, lawyer, retriever)
-  secretary_response(conversation, context)
+  load_docs("criminal")

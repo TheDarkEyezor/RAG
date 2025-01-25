@@ -6,6 +6,9 @@ from langchain_community.vectorstores import SKLearnVectorStore
 from langchain_nomic.embeddings import NomicEmbeddings
 import json
 from langchain_core.messages import HumanMessage, SystemMessage
+import os
+from datetime import datetime
+import re
 
 local_llm = "llama3.2:3b-instruct-fp16"
 llm = ChatOllama(model=local_llm, temperature=0)
@@ -143,14 +146,37 @@ name, case summary, location, will, executor, beneficiaries, guardian, funeral a
 If any information is missing or insufficient, specify missing for that tag.
 """
 
-def secretary_response(msg_history, context):
+def extract_client_name(history):
+  # Look for name pattern in conversation
+  name_match = re.search(r'Name:\s*([^\n]+)', history, re.IGNORECASE)
+  if name_match:
+      return name_match.group(1).strip()
+  return "unnamed_client"
+
+def secretary_response(msg_history):
   print("secretary_response")
-  print("msg_history", msg_history)
-  print("context", context)
+  
+  # Generate report
   secretary_prompt_formatted = secretary_prompt.format(history=msg_history)
-  result = llm.invoke(
-    [HumanMessage(content=secretary_prompt_formatted)]
-    )
+  result = llm.invoke([HumanMessage(content=secretary_prompt_formatted)])
+  report_content = result.content
+  
+  # Save report
+  timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+  client_name = "unamed_client" #extract_client_name(msg_history)
+  filename = f"{client_name}_{timestamp}.md"
+  
+  # Create reports directory if it doesn't exist
+  reports_dir = os.path.join(os.path.dirname(__file__), "reports")
+  os.makedirs(reports_dir, exist_ok=True)
+  
+  # Save report as markdown
+  report_path = os.path.join(reports_dir, filename)
+  with open(report_path, "w") as f:
+    f.write(f"# Legal Report for {client_name}\n")
+    f.write(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+    f.write(report_content)
+  
   return result.content
 
 example = """
@@ -189,7 +215,7 @@ class Lawyer:
 
   def send_history_to_secretary(self):
     print("lawyer is sending history to secretary")
-    report = secretary_response(self.history, self.context)
+    report = secretary_response(self.history)
     return {
       "message": "Thank you for providing all the information. I'll have our secretary prepare a report.",
       "report": report
